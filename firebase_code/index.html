@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase_version9_RealtimeDB(G'sACADEMY初学者用サンプル)</title>
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <h1>チャットアプリ</h1>
+    <!-- コンテンツ表示画面 -->
+    <div>
+        <!-- 各場所にidを設定しましょう -->
+        <div>
+            <input type="text" id="uname" placeholder="名前を入力してください">
+        </div>
+        <div>
+            <textarea id="text" placeholder="文章を入力してください"></textarea>
+        </div>
+        <button id="send">送信</button>
+        <!-- style.cssに "overflow: auto;"を書いてみましょう！※最後に -->
+        <div id="output"></div>
+    </div>
+
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
+        import { getDatabase, ref, push, set, update, onChildAdded, remove, onChildRemoved, onChildChanged }
+            from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+
+            };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app); //RealtimeDBに接続
+        const dbRef = ref(db, "chat"); //RealtimeDB内の"chat"を使う
+
+        //データ登録(Click)
+        // 送信
+        $("#send").on('click', function (){
+            const uname = $("#uname").val();
+            const text = $("#text").val();
+
+            console.log(uname,'名前')
+            console.log(text, 'テキスト')
+
+            // 送信データの塊を作ります
+            const msg = {
+                uname : $("#uname").val(),
+                text : $("#text").val(),
+            }
+
+            // 送信処理を書きます
+            // firebaseにpush=送る準備をする dbRefは秘密の鍵の情報
+            const newPostRef = push(dbRef)
+            set(newPostRef, msg)
+
+            $("#uname").val("");
+            $("#text").val("");
+        });
+
+        //データ登録(Enter)
+
+        onChildAdded(dbRef, function(data){
+            const msg = data.val();
+            const key = data.key; //削除・更新に必須
+
+            let html = `
+              <div id="${key}" class = "msg">
+            <p>
+                ${msg.uname}<br>
+                <span contentEditable="true" id="${key}_update">${msg.text}</span>
+                <span class="remove" data-key="${key}">🆑</span>
+                <span class="update" data-key="${key}">🆙</span>
+            </p>
+            </div>
+            `
+            // outputの最後に追加
+            $("#output").append(html);
+        })
+
+        //削除イベント
+        $("#output").on("click", ".remove", function(){
+            const key = $(this).attr("data-key");
+            const removeItem = ref(db,"chat/"+key);
+            remove(removeItem); //firebaseのデータ削除関数
+        });
+
+        //更新イベント
+        $("#output").on("click", ".update", function(){
+            const key = $(this).attr("data-key");
+            update(ref(db,"chat/"+key),{
+                text : $("#"+key+'_update').html()
+            });
+        });
+
+
+        // 削除処理実施時のイベント
+        onChildRemoved(dbRef, (data) => {
+            $("#"+data.key).remove();
+
+        });
+
+        // 更新処理実施時のイベント
+        onChildChanged(dbRef, (data) => {
+            $("#"+data.key+'_update').html(data.val().text);
+            $("#"+data.key+'_update').fadeOut(800).fadeIn(800);
+        });
+
+
+        //最初にデータ取得＆onSnapshotでリアルタイムにデータを取得
+    </script>
+</body>
+
+</html>
